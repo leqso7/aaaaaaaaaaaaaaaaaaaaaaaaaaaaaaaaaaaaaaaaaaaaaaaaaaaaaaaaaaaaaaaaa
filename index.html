@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>დაცული საიტი</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        #loginPage {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .login-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 300px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        #mainContent {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginPage">
+        <div class="login-box">
+            <h2>ავტორიზაცია</h2>
+            <input type="text" id="deviceId" placeholder="მოწყობილობის ID" style="display: none">
+            <input type="text" id="accessCode" placeholder="წვდომის კოდი">
+            <button onclick="checkAccess()">შესვლა</button>
+            <p id="errorMessage" class="error"></p>
+        </div>
+    </div>
+
+    <div id="mainContent">
+        <!-- თქვენი საიტის კონტენტი -->
+        <h1>მარტივი ვებსაიტი</h1>
+        <p>მოგესალმებით! ეს არის დაცული კონტენტი.</p>
+    </div>
+
+    <script>
+        // უნიკალური დევაის ID-ის გენერაცია
+        function generateDeviceId() {
+            const nav = window.navigator;
+            const screen = window.screen;
+            const guid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            return guid;
+        }
+
+        // წვდომის კოდები და მათი დევაის ID-ები
+        const accessCodes = {
+            'USER1CODE': {
+                deviceId: null,
+                expires: '2024-12-31'
+            },
+            'USER2CODE': {
+                deviceId: null,
+                expires: '2024-12-31'
+            }
+            // შეგიძლიათ დაამატოთ მეტი კოდი
+        };
+
+        function checkAccess() {
+            const accessCode = document.getElementById('accessCode').value;
+            const errorMessage = document.getElementById('errorMessage');
+            let deviceId = localStorage.getItem('deviceId');
+            
+            if (!deviceId) {
+                deviceId = generateDeviceId();
+                localStorage.setItem('deviceId', deviceId);
+            }
+
+            if (accessCodes[accessCode]) {
+                const today = new Date();
+                const expiryDate = new Date(accessCodes[accessCode].expires);
+                
+                // ვამოწმებთ თუ კოდი უკვე გამოყენებულია სხვა მოწყობილობაზე
+                if (accessCodes[accessCode].deviceId && 
+                    accessCodes[accessCode].deviceId !== deviceId) {
+                    errorMessage.textContent = 'ეს კოდი უკვე გამოყენებულია სხვა მოწყობილობაზე';
+                    return;
+                }
+
+                if (today <= expiryDate) {
+                    // ვინახავთ დევაის ID-ს კოდისთვის
+                    accessCodes[accessCode].deviceId = deviceId;
+                    
+                    // ვინახავთ წვდომის ინფორმაციას
+                    const accessInfo = {
+                        code: accessCode,
+                        deviceId: deviceId,
+                        expires: accessCodes[accessCode].expires,
+                        timestamp: new Date().getTime()
+                    };
+                    localStorage.setItem('accessInfo', JSON.stringify(accessInfo));
+                    
+                    // ვაჩვენებთ კონტენტს
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                } else {
+                    errorMessage.textContent = 'კოდს ვადა გაუვიდა';
+                }
+            } else {
+                errorMessage.textContent = 'არასწორი კოდი';
+            }
+        }
+
+        // ვამოწმებთ არსებულ სესიას გვერდის ჩატვირთვისას
+        window.onload = function() {
+            const accessInfo = JSON.parse(localStorage.getItem('accessInfo'));
+            const deviceId = localStorage.getItem('deviceId');
+            
+            if (accessInfo && deviceId === accessInfo.deviceId) {
+                const today = new Date();
+                const expiryDate = new Date(accessInfo.expires);
+                const sessionAge = new Date().getTime() - accessInfo.timestamp;
+                
+                // ვამოწმებთ ვადას და სესიის ხანგრძლივობას (24 საათი)
+                if (today <= expiryDate && sessionAge < 24 * 60 * 60 * 1000) {
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                } else {
+                    localStorage.removeItem('accessInfo');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
